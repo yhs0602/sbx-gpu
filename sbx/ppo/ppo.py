@@ -11,6 +11,7 @@ from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedul
 from stable_baselines3.common.utils import explained_variance, get_schedule_fn
 
 from sbx.common.on_policy_algorithm import OnPolicyAlgorithmJax
+from sbx.ppo.cnn_policies import CNNPPOPolicy
 from sbx.ppo.policies import PPOPolicy
 
 PPOSelf = TypeVar("PPOSelf", bound="PPO")
@@ -70,7 +71,7 @@ class PPO(OnPolicyAlgorithmJax):
 
     policy_aliases: ClassVar[Dict[str, Type[PPOPolicy]]] = {  # type: ignore[assignment]
         "MlpPolicy": PPOPolicy,
-        # "CnnPolicy": ActorCriticCnnPolicy,
+        "CnnPolicy": CNNPPOPolicy,
         # "MultiInputPolicy": MultiInputActorCriticPolicy,
     }
     policy: PPOPolicy  # type: ignore[assignment]
