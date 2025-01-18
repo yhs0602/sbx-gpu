@@ -62,6 +62,7 @@ class OnPolicyAlgorithmJax(OnPolicyAlgorithm):
             verbose=verbose,
             seed=seed,
             supported_action_spaces=supported_action_spaces,
+            device=device,
             _init_setup_model=_init_setup_model,
         )
         # Will be updated later

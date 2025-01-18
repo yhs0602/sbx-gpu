@@ -16,6 +16,7 @@ from flax.training.train_state import TrainState
 from gymnasium import spaces
 
 from sbx.common.policies import BaseJaxPolicy
+from stable_baselines3.common.type_aliases import Schedule
 
 tfd = tfp.distributions
 
@@ -133,7 +134,6 @@ class CNNPPOPolicy(BaseJaxPolicy):
         activation_fn: Callable[[jnp.ndarray], jnp.ndarray] = jax.nn.relu,
         optimizer_class: Callable[..., optax.GradientTransformation] = optax.adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        max_grad_norm: float = 0.5,
     ):
         if optimizer_kwargs is None:
             optimizer_kwargs = {"eps": 1e-5}
@@ -150,9 +150,8 @@ class CNNPPOPolicy(BaseJaxPolicy):
         self.log_std_init = log_std_init
         self.activation_fn = activation_fn
         self.key = self.noise_key = jax.random.PRNGKey(0)
-        self.max_grad_norm = max_grad_norm
 
-    def build(self, key: jax.Array, lr_schedule: Callable[[float], float]) -> jax.Array:
+    def build(self, key: jax.Array, lr_schedule: Schedule, max_grad_norm: float) -> jax.Array:
         key, actor_key, vf_key = jax.random.split(key, 3)
         # Keep a key for the actor
         key, self.key = jax.random.split(key, 2)
@@ -190,7 +189,7 @@ class CNNPPOPolicy(BaseJaxPolicy):
             apply_fn=self.actor.apply,
             params=self.actor.init(actor_key, obs),
             tx=optax.chain(
-                optax.clip_by_global_norm(self.max_grad_norm),
+                optax.clip_by_global_norm(max_grad_norm),
                 self.optimizer_class(
                     learning_rate=lr_schedule(1),
                     **self.optimizer_kwargs,
@@ -204,7 +203,7 @@ class CNNPPOPolicy(BaseJaxPolicy):
             apply_fn=self.vf.apply,
             params=self.vf.init(vf_key, obs),
             tx=optax.chain(
-                optax.clip_by_global_norm(self.max_grad_norm),
+                optax.clip_by_global_norm(max_grad_norm),
                 self.optimizer_class(
                     learning_rate=lr_schedule(1),
                     **self.optimizer_kwargs,
@@ -237,3 +236,9 @@ class CNNPPOPolicy(BaseJaxPolicy):
         log_probs = dist.log_prob(actions)
         values = vf_state.apply_fn(vf_state.params, observations).flatten()
         return actions, log_probs, values
+
+    def reset_noise(self, batch_size: int = 1) -> None:
+        """
+        Sample new weights for the exploration matrix, when using gSDE.
+        """
+        self.key, self.noise_key = jax.random.split(self.key, 2)
